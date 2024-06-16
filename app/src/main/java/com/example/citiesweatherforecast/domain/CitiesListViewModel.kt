@@ -7,6 +7,7 @@ import com.example.citiesweatherforecast.data.models.CitiesItem
 import com.example.citiesweatherforecast.data.repository.CitiesRepository
 import com.example.citiesweatherforecast.tools.Resource
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import okhttp3.internal.filterList
 import javax.inject.Inject
@@ -20,8 +21,43 @@ class CitiesListViewModel @Inject constructor(
     var errorResult = mutableStateOf("")
     var isLoading = mutableStateOf(false)
 
+    private var storedCities = listOf<CitiesItem>()
+    var isSearching = mutableStateOf(false)
+    private var initialSearchState = true
+
     init {
         citiesLoading()
+    }
+
+    fun searchCity(cityName: String){
+        val currentList = if (initialSearchState){
+            cities.value
+        } else {
+            storedCities
+        }
+
+        viewModelScope.launch(Dispatchers.Default) {
+
+            if (cityName.isEmpty()){
+                cities.value = storedCities
+                initialSearchState = true
+                isSearching.value = false
+                return@launch
+            }
+
+            val result = currentList.filter {
+                it.city.contains(cityName.trim(), ignoreCase = true)
+            }
+
+            if (initialSearchState) {
+                storedCities = cities.value
+                initialSearchState = false
+            }
+
+            cities.value = result
+            isSearching.value = true
+
+        }
     }
 
     fun citiesLoading(){
